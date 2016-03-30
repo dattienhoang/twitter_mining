@@ -4,13 +4,34 @@ Created on Mon Nov 02 13:16:54 2015
 
 @author: Dat Tien Hoang
 
+Notes:
+
+(1) May get an error with httpsclient...DO NOT update the SSLContext
+
 """
 print 'BEGIN read_twitter_stream.py'
 print '...importing packages'
-import json
+import json, requests
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
+#import geopy
+import plotly.plotly as py
+
+#input latlng is a string formated as: '2.2,3.3'
+def reverseGeocode(latlng):
+    result = {}
+    url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng={0}&key={1}'
+    apikey = 'AIzaSyCUyhnEr2oJmErj3ahn2F9AnK_-QoiVP7o'
+    #apikey = 'AIzaSyB6j66BsRb5dp2BLempjh8aLCuf_eNJaGc'
+    request = url.format(latlng, apikey)
+    #request = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' + \
+    #          latlng +'&key=' + apikey
+    #print request
+    data = json.loads(requests.get(request).text)
+    if len(data['results']) > 0:
+        result = data['results'][0]
+    return result
 
 def word_in_text(word, text):
     if text == None:
@@ -22,20 +43,145 @@ def word_in_text(word, text):
         return True
     return False
 
-def word_notin_text(word, text):
-    if text == None:
-        text = 'None'
-    word = word.lower()
-    text = text.lower()
-    match = re.search(word, text)
-    if match:
-        return False
-    return True
+states = {
+        'AK': 0,
+        'AL': 0,
+        'AR': 0,
+        'AS': 0,
+        'AZ': 0,
+        'CA': 0,
+        'CO': 0,
+        'CT': 0,
+        'DC': 0,
+        'DE': 0,
+        'FL': 0,
+        'GA': 0,
+        'GU': 0,
+        'HI': 0,
+        'IA': 0,
+        'ID': 0,
+        'IL': 0,
+        'IN': 0,
+        'KS': 0,
+        'KY': 0,
+        'LA': 0,
+        'MA': 0,
+        'MD': 0,
+        'ME': 0,
+        'MI': 0,
+        'MN': 0,
+        'MO': 0,
+        'MP': 0,
+        'MS': 0,
+        'MT': 0,
+        'NA': 0,
+        'NC': 0,
+        'ND': 0,
+        'NE': 0,
+        'NH': 0,
+        'NJ': 0,
+        'NM': 0,
+        'NV': 0,
+        'NY': 0,
+        'OH': 0,
+        'OK': 0,
+        'OR': 0,
+        'PA': 0,
+        'PR': 0,
+        'RI': 0,
+        'SC': 0,
+        'SD': 0,
+        'TN': 0,
+        'TX': 0,
+        'UT': 0,
+        'VA': 0,
+        'VI': 0,
+        'VT': 0,
+        'WA': 0,
+        'WI': 0,
+        'WV': 0,
+        'WY': 0
+}
+
+statescounter = {
+        'AK': 0,
+        'AL': 0,
+        'AR': 0,
+        'AS': 0,
+        'AZ': 0,
+        'CA': 0,
+        'CO': 0,
+        'CT': 0,
+        'DC': 0,
+        'DE': 0,
+        'FL': 0,
+        'GA': 0,
+        'GU': 0,
+        'HI': 0,
+        'IA': 0,
+        'ID': 0,
+        'IL': 0,
+        'IN': 0,
+        'KS': 0,
+        'KY': 0,
+        'LA': 0,
+        'MA': 0,
+        'MD': 0,
+        'ME': 0,
+        'MI': 0,
+        'MN': 0,
+        'MO': 0,
+        'MP': 0,
+        'MS': 0,
+        'MT': 0,
+        'NA': 0,
+        'NC': 0,
+        'ND': 0,
+        'NE': 0,
+        'NH': 0,
+        'NJ': 0,
+        'NM': 0,
+        'NV': 0,
+        'NY': 0,
+        'OH': 0,
+        'OK': 0,
+        'OR': 0,
+        'PA': 0,
+        'PR': 0,
+        'RI': 0,
+        'SC': 0,
+        'SD': 0,
+        'TN': 0,
+        'TX': 0,
+        'UT': 0,
+        'VA': 0,
+        'VI': 0,
+        'VT': 0,
+        'WA': 0,
+        'WI': 0,
+        'WV': 0,
+        'WY': 0
+}
 
 print '...ok starting main pro'
-tweets_data_path = [ \
-'mtltor_20151111_1550P__20151112_0935A.txt',
-'mtltor_20151112_1100A__20151112_1725P.txt']
+tweets_data_path = [
+#files = [
+#'left_20160126_A.txt',
+#'left_20160126_B.txt',
+#'left_20160126_C.txt', 
+#'left_20160126_D.txt', 
+#'left_20160126_E.txt',
+#'left_20160126_F.txt',
+#'left_20160126_G.txt',
+#'left_20160126_H.txt',
+#'left_20160126_I.txt',
+#'left_20160126_J.txt']
+'left_20160202_A.txt',
+'left_20160202_B.txt',
+'left_20160202_C.txt',
+'left_20160202_D.txt']
+
+sentiments = 'AFINN-111.txt'
 
 tweets_data = []
 for file in range(len(tweets_data_path)):
@@ -48,26 +194,15 @@ for file in range(len(tweets_data_path)):
             tweets_data.append(tweet)
         except:
             continue
-print len(tweets_data)
+
 print '...searching for incomplete tweet entries'
 excise = []
-for iline in range(len(tweets_data)):
-    #print iline
-    if 'text' not in tweets_data[iline]:
-        excise.append(iline)
+for i in range(len(tweets_data)):
+    if 'text' not in tweets_data[i]:
+        excise.append(i)
 if len(excise) != 0:
     tweets_data = [i for j, i in enumerate(tweets_data) if j not in excise]
     print '......incomplete tweets found and excised!'
-        
-#print (tweets_data[1])['lang']
-#print (tweets_data[1])['text'].encode('utf-8', errors='replace')
-
-#print len(tweets_data), range
-#print type(tweets_data)
-#print (tweets_data[0])['text']
-#for i in range(len(tweets_data)):
-#    print 'tweet#:', i
-#    print (tweets_data[i])['text'].encode('utf-8', errors='replace')
 
 print '...amount of tweets in data set:', len(tweets_data)
 print '...structuring tweets'
@@ -77,8 +212,9 @@ tweets['text'] = map(lambda tweet: tweet['text'].encode('utf-8',
                  errors='replace'), tweets_data)
 tweets['lang'] = map(lambda tweet: tweet['lang'], tweets_data)
 tweets['country'] = map(lambda tweet: tweet['place']['country'] \
-                         if tweet['place'] != None else None, tweets_data)
-
+                    if tweet['place'] != None else None, tweets_data)
+tweets['coord'] = map(lambda tweet: tweet['place']['bounding_box']['coordinates'] \
+                    if tweet['place'] != None else None, tweets_data)
 print '...done structuring. show basic structure results'
 
 #first simple characterization of this data...plot tweets by language
@@ -89,11 +225,8 @@ ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=10)
 ax.set_xlabel('Languages', fontsize=15)
 ax.set_ylabel('Number of tweets' , fontsize=15)
-ax.set_title('Top 5 languages', fontsize=15, fontweight='bold')
+ax.set_title('Top 10 languages', fontsize=15, fontweight='bold')
 tweets_by_lang[:10].plot(ax=ax, kind='bar', color='red')
-plt.show()
-#issue a pause here...example result
-#raw_input("Press ENTER to continue")
 
 #another simple characterization of this data...plot tweets by country
 tweets_by_country = tweets['country'].value_counts()
@@ -103,225 +236,118 @@ ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=10)
 ax.set_xlabel('Countries', fontsize=15)
 ax.set_ylabel('Number of tweets' , fontsize=15)
-ax.set_title('Top 5 countries', fontsize=15, fontweight='bold')
+ax.set_title('Top 10 countries', fontsize=15, fontweight='bold')
 tweets_by_country[:10].plot(ax=ax, kind='bar', color='blue')
-plt.show()
 
-#segregate by tags in 
-print '...segregate by tags'
-tweets['montreal'] = tweets['text'].apply(lambda tweet: 
-                     word_in_text('montreal', tweet))
-tweets[u'montréal'] = tweets['text'].apply(lambda tweet: 
-                     word_in_text('montréal', tweet))
-tweets['mtl'] = tweets['text'].apply(lambda tweet: word_in_text('mtl', tweet) and word_notin_text('montreal', tweet))
-#tweets['nyc'] = tweets['text'].apply(lambda tweet: word_in_text('nyc', tweet))
-tweets['toronto'] = tweets['text'].apply(lambda tweet: word_in_text('toronto', tweet))
+#country listing is insufficient! what to do...
+print '......no. tweets listing country:', len(filter(None, tweets['country']))
+print '......no. American tweets:', (tweets['country']=='United States').sum()
 
-print '......tag counts'
-print '......', tweets['montreal'].value_counts()[True]
-print '......', tweets['mtl'].value_counts()[True]
-print '......', tweets[u'montréal'].value_counts()[True]
-#print '......', tweets['nyc'].value_counts()[True]
-print '......', tweets['toronto'].value_counts()[True]
-
-#display according to tags...
-tags = ['montreal', 'mtl', u'montréal', 'toronto']
-tweets_by_tag = [tweets['montreal'].value_counts()[True], tweets['mtl'].value_counts()[True], tweets[u'montréal'].value_counts()[True], tweets['toronto'].value_counts()[True]]
-
-x_pos = list(range(len(tags)))
-width = 0.8
-fig, ax = plt.subplots()
-plt.bar(x_pos, tweets_by_tag, width, alpha=1, color='g')
-
-# Setting axis labels and ticks
-ax.set_ylabel('Number of tweets', fontsize=15)
-ax.set_title('Ranking: montreal vs. toronto (Raw data)', fontsize=10, fontweight='bold')
-ax.set_xticks([p + 0.4 * width for p in x_pos])
-ax.set_xticklabels(tags)
-plt.grid()
-plt.show()
-
-#refine the data containing the additional keywords
-print '...cleaning twitter data'
-
-print '......non-canadian tweets'
-tweets['NotCA'] = tweets['country'].apply(lambda tweet: word_notin_text('canada', tweet))
-tweets['relevant'] = tweets['country'].apply(lambda tweet: word_notin_text('canada', tweet))
-
-print tweets['NotCA'].value_counts()[True]
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......canadian tweets'
-tweets['Canada'] = tweets['country'].apply(lambda tweet: word_in_text('canada', tweet))
-tweets['relevant'] = tweets['country'].apply(lambda tweet: word_in_text('canada', tweet))
-
-print tweets['Canada'].value_counts()[True]
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......french tweets'
-tweets['fr'] = tweets['lang'].apply(lambda tweet: word_in_text('fr', tweet))
-tweets['relevant'] = tweets['lang'].apply(lambda tweet: word_in_text('fr', tweet))
-
-print tweets['fr'].value_counts()[True]
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......french and foreign tweets'
-tweets['relevant_L'] = tweets['lang'].apply(lambda tweet: word_in_text('fr', tweet))
-tweets['relevant_C'] = tweets['country'].apply(lambda tweet: word_notin_text('canada', tweet))
-#^need to do a double relevance bc picking two things of different categories!
-#print tweets['relevant_L'] # a list of tweet indices and true/false
-tweets['relevant'] = tweets['relevant_L']
-for i in range(len(tweets['relevant_L'])):
-    if (tweets['relevant_L'])[i] == True and (tweets['relevant_C'])[i] == True:
-        (tweets['relevant'])[i] = True
+#coordinates are in a bounding box...reduce it to something simpler!
+print '...geocoding spatial coordinates for American tweets'
+meancoord = []
+tweets['geocodedat'] = ''
+tweets['state'] = ''
+for i in range(len(tweets)):
+#for i, row in tweets.iterrows():
+    #only assign coordinates to american tweets
+    if (tweets['coord'][i] != None and tweets['country'][i] == 'United States'):
+        a = tweets['coord'][i][0]
+        meancoord.append([(a[0][0] + a[1][0] + a[2][0]+ a[3][0])/4,
+                          (a[0][1] + a[1][1] + a[2][1]+ a[3][1])/4])
     else:
-        (tweets['relevant'])[i] = False
+        meancoord.append(None)
+    if meancoord[i] != None:
+        #twitter and google have opposite convention for lon, lat ordering
+        print '......found coord:', str(meancoord[i][0]) + ',' + \
+                                    str(meancoord[i][1])
+        #preserve the amount of calls to the server since I'm limited....
+        tweets['geocodedat'][i] = reverseGeocode(str(meancoord[i][1]) + ',' + \
+                                  str(meancoord[i][0]))
+        #some geolocating returns blank...why?...omit them
+        if len(tweets['geocodedat'][i]) != 0:
+            for info in tweets['geocodedat'][i]['address_components']:
+                if info['types'][0] == 'administrative_area_level_1':
+                    tweets['state'][i] = info['short_name']
+                    print '......found a state! ', tweets['state'][i]
+        else: tweets['state'][i] = None
+#import and deal with sentiment data into workable format...
+scores = {} # initialize an empty dictionary
+afinnfile = open(sentiments)
+#The file is tab-delimited. "\t" means "tab character"
+for line in afinnfile:
+    term, score  = line.split("\t")
+    scores[term] = int(score)
+#but only the american tweets...no need to bother with foreign ones
+print 'len(twscore)', len(tweets)
+twscore = []
+val = 0
+i = 0
+for tweet in tweets['text']:
+    for key in scores:
+        val2 = tweet.find(key)
+        if val2 != -1: val += scores[key]
+    twscore.append(val)
+    if tweets['state'][i] in states:
+        states[tweets['state'][i]] += val
+        statescounter[tweets['state'][i]] += 1
+    val = 0
+    i += 1
+print 'len(twscore)', len(twscore)
 
-print tweets['relevant'].value_counts()[True]
+#convert dictionary to pandas datafram
+for item in states:
+    if statescounter[item] != 0:
+        states[item] = float(states[item])/float(statescounter[item])
+#weighted by tweet count
+result = pd.DataFrame(states.items(), columns=['state', 'rawscore'])
+result['counts'] = ''
+for i in range(len(result['state'])):
+    result['counts'][i] = statescounter[result['state'][i]]
 
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-intl_mtl_f = \
-tweets[tweets['relevant'] == True]['montreal'].value_counts()[True] + \
-tweets[tweets['relevant'] == True]['mtl'].value_counts()[True] + \
-tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-
-intl_tor_f = tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......french and canadian tweets'
-tweets['relevant_L'] = tweets['lang'].apply(lambda tweet: word_in_text('fr', tweet))
-tweets['relevant_C'] = tweets['country'].apply(lambda tweet: word_in_text('canada', tweet))
-#^need to do a double relevance bc picking two things of different categories!
-#print tweets['relevant_L'] # a list of tweet indices and true/false
-tweets['relevant'] = tweets['relevant_L']
-for i in range(len(tweets['relevant_L'])):
-    if (tweets['relevant_L'])[i] == True and (tweets['relevant_C'])[i] == True:
-        (tweets['relevant'])[i] = True
-    else:
-        (tweets['relevant'])[i] = False
-
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-can_mtl_f = \
-tweets[tweets['relevant'] == True]['montreal'].value_counts()[True] + \
-tweets[tweets['relevant'] == True]['mtl'].value_counts()[True] + \
-tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-
-can_tor_f = tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......english and foreign tweets'
-tweets['relevant_L'] = tweets['lang'].apply(lambda tweet: word_in_text('en', tweet))
-tweets['relevant_C'] = tweets['country'].apply(lambda tweet: word_notin_text('canada', tweet))
-#^need to do a double relevance bc picking two things of different categories!
-#print tweets['relevant_L'] # a list of tweet indices and true/false
-tweets['relevant'] = tweets['relevant_L']
-for i in range(len(tweets['relevant_L'])):
-    if (tweets['relevant_L'])[i] == True and (tweets['relevant_C'])[i] == True:
-        (tweets['relevant'])[i] = True
-    else:
-        (tweets['relevant'])[i] = False
-
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-intl_mtl_e = \
-tweets[tweets['relevant'] == True]['montreal'].value_counts()[True] + \
-tweets[tweets['relevant'] == True]['mtl'].value_counts()[True] + \
-tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-
-intl_tor_e = tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-print '......english and canadian tweets'
-tweets['relevant_L'] = tweets['lang'].apply(lambda tweet: word_in_text('en', tweet))
-tweets['relevant_C'] = tweets['country'].apply(lambda tweet: word_in_text('canada', tweet))
-#^need to do a double relevance bc picking two things of different categories!
-#print tweets['relevant_L'] # a list of tweet indices and true/false
-tweets['relevant'] = tweets['relevant_L']
-for i in range(len(tweets['relevant_L'])):
-    if (tweets['relevant_L'])[i] == True and (tweets['relevant_C'])[i] == True:
-        (tweets['relevant'])[i] = True
-    else:
-        (tweets['relevant'])[i] = False
-
-print tweets['relevant'].value_counts()[True]
-
-print tweets[tweets['relevant'] == True]['montreal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['mtl'].value_counts()[True]
-print tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-print tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-can_mtl_e = \
-tweets[tweets['relevant'] == True]['montreal'].value_counts()[True] + \
-tweets[tweets['relevant'] == True]['mtl'].value_counts()[True] + \
-tweets[tweets['relevant'] == True][u'montréal'].value_counts()[True]
-
-can_tor_e = tweets[tweets['relevant'] == True]['toronto'].value_counts()[True]
-
-#first plot canadian tweets
-#x-axis is percent of anglo tweets, scale shifted to start from -50%
-#y-axis is the number of tweets in thousands
-
-#plot canadian tweets first...first franco/anglophones for toronto
-xs = [-50,(float(can_tor_f)/(can_mtl_f+can_tor_f))*100 - 50.,50,-50]
-ys = [0,(can_tor_f+can_tor_e)/1000.,0,0]
-plt.plot(xs,ys, color='b', linewidth=2)
-plt.fill_between(xs,ys,color='#ccccff')
-#now montreal...
-xs = [-50,(float(can_mtl_f)/(can_mtl_f+can_tor_f))*100 - 50.,50,-50]
-ys = [0,-1*(can_mtl_f+can_mtl_e)/1000.,0,0]
-plt.plot(xs,ys, color='r', linewidth=2)
-plt.fill_between(xs,ys,color='#ffcccc')
-plt.axis([-100,100,-5,5],'off')
-plt.gca().axes.get_xaxis().set_visible(False)
-plt.gca().axes.get_yaxis().set_visible(False)
-#annotate
-plt.axvline(color='k', linestyle='dashed')
-#plt.annotate('Toronto')
-plt.show()
-
-#plot international tweets next...first franco/anglophones for toronto
-xs = [-50,(float(intl_tor_f)/(intl_mtl_f+intl_tor_f))*100 - 50.,50,-50]
-ys = [0,(intl_tor_f+intl_tor_e)/1000.,0,0]
-plt.plot(xs,ys, color='b', linewidth=2)
-plt.fill_between(xs,ys,color='#ccccff')
-#now montreal...
-xs = [-50,(float(intl_mtl_f)/(intl_mtl_f+intl_tor_f))*100 - 50.,50,-50]
-ys = [0,-1*(intl_mtl_f+intl_mtl_e)/1000.,0,0]
-plt.plot(xs,ys, color='r', linewidth=2)
-plt.fill_between(xs,ys,color='#ffcccc')
-plt.axis([-100,100,-50,50],'off','equal')
-plt.gca().axes.get_xaxis().set_visible(False)
-plt.gca().axes.get_yaxis().set_visible(False)
-#annotate
-plt.axvline(color='k', linestyle='dashed')
-#plt.annotate('Toronto')
-plt.show()
+#----------------------------------------------
+py.sign_in('dattienhoang', '08xhph2kx4')
+df = result
+for col in df.columns:
+    df[col] = df[col].astype(str)
+scl = [[0.0, 'rgb(242,240,247)'],[0.2, 'rgb(218,218,235)'], \
+        [0.4, 'rgb(188,189,220)'], [0.6, 'rgb(158,154,200)'], \
+        [0.8, 'rgb(117,107,177)'],[1.0, 'rgb(84,39,143)']]
+#text to display upon hovering
+df['text'] = df['state'] + '<br>' +\
+    'Average Sentiment Score '+df['rawscore']+'<br>'+\
+    'Tweet Count '+df['counts']+'<br>'#+\
+    #'Raw Sentiment Score '+df['rawscore']*df['counts']
+data = [ dict(
+        type='choropleth',
+        colorscale = scl,
+        autocolorscale = True,#False,
+        locations = df['state'],
+        z = df['rawscore'].astype(float),
+        locationmode = 'USA-states',
+        text = df['text'],
+        marker = dict(
+            line = dict (
+                color = 'rgb(255,255,255)',
+                width = 2
+            )
+        ),
+        colorbar = dict(
+            title = "Sentiment"
+        ),
+        zmin = -1.5,
+        zmax = 1.5
+    ) ]
+layout = dict(
+        title = 'Socialism Sentiments in the United States 2016-02-01',
+        geo = dict(
+            scope='usa',
+            projection=dict( type='albers usa' ),
+            showlakes = True,
+            lakecolor = 'rgb(255, 255, 255)',
+        ),
+    )
+fig = dict( data=data, layout=layout )
+url = py.plot( fig, filename='socsent-cloropleth-map_2' )
 
 print 'END read_twitter_stream.py'
